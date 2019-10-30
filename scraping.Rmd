@@ -1,0 +1,106 @@
+---
+title: "Scraping-Schedules"
+author: "Jasmin Mousavi"
+date: "10/29/2019"
+output: html_document
+---
+## Scraping Chico State Schedules 
+> Libraries used to perform data manipulations and web scraping
+
+```{r}
+library(rvest) #web scraping
+library(tidyr) #data wrangling
+library(stringr) #string/word mainipulation 
+```
+> Create a function that takes in a url, scrapes the html from the webpage, and returns a tibble containing the scheudle 
+
+```{r}
+#uses rvst, tidyr, and stringr libraries 
+read_class_schedule<- function(url){
+  
+  #load the html from the url
+  webpage <- read_html(url)
+  
+  #Get the header that contains the semester and year from the webpage
+  h1 <- webpage %>% 
+    html_node("div.subjpagesheader")  %>% 
+    html_nodes("h1") %>% 
+    html_text()
+  
+  #separate the semester and year from the header
+  semester <- word(h1, -3) #takes third to last word
+  year <- word(h1, -2) #takes second to last word
+  
+  #load the tables from the html
+  table <- webpage %>% html_nodes("table")
+  
+  #gather all the table data with class subj
+  subject <- table %>% 
+                    html_nodes("td.subj") %>% 
+                    html_text()
+  
+  #gather all the table data with class cat_num
+  cat_num <- table %>% 
+                html_nodes("td.cat_num") %>% 
+                html_text() %>% 
+                as.integer()
+  
+  #gather all the table data with class sect
+  section <- table %>% 
+                      html_nodes("td.sect") %>% 
+                      html_text()
+  
+  #gather all the table data with class title
+  title <- table %>% 
+                      html_nodes("td.title") %>% 
+                      html_text()
+  
+  #gather all the table data with class Instructor
+  instructor <- table %>% 
+                      html_nodes("td.Instructor") %>% 
+                      html_text()
+  
+  #gather all the table data with class enrtot
+  enrollment <- table %>% 
+                      html_nodes("td.enrtot") %>% 
+                      html_text()
+  
+  #create a tibble with all the data
+  table <- tibble(semester=semester,
+                   year=year,
+                   subject=subject,
+                   cat_num=cat_num,
+                   section=section,
+                   title=title,
+                   instructor=instructor,
+                   enrollment=enrollment)
+  
+  return(table) #return the tibble 
+}
+```
+
+> Use the funciton above to scrape multiple urls
+
+```{r}
+#create a table for each url you want to scrape 
+table1 <- read_class_schedule("http://ems.csuchico.edu/APSS/schedule/spr2019/CSCI.shtml")
+table2 <- read_class_schedule("http://ems.csuchico.edu/APSS/schedule/spr2020/CSCI.shtml")
+table3 <- read_class_schedule("http://ems.csuchico.edu/APSS/schedule/spr2019/MATH.shtml")
+table4 <- read_class_schedule("http://ems.csuchico.edu/APSS/schedule/spr2020/MATH.shtml")
+```
+
+> Combine all the tables containing the schedules into one table 
+
+```{r}
+schedules <- table1 %>% rbind(table2) %>% rbind(table3) %>% rbind(table4)
+head(schedules)
+```
+
+> Lets check to see if it concatinated correctly
+
+```{r}
+#add all the rows from each table 
+total_obs <- dim(table1)[1] + dim(table2)[1] + dim(table3)[1] + dim(table4)[1]
+#compare total rows with the rows from our concatinated table
+total_obs == dim(schedules)[1]
+```
